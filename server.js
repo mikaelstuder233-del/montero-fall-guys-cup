@@ -258,8 +258,44 @@ client.on(Events.InteractionCreate,async interaction=>{
     if(interaction.isChatInputCommand()){
       if(interaction.commandName==="turnier-panel")
         return interaction.reply({embeds:[await buildTournamentEmbed()],components:[registerRow]});
-      if(interaction.commandName==="teilnehmer")
-        return interaction.reply({content:`🏆 **Montéro Cup:** ${await countPlayers()}/${maxPlayers} Plätze belegt.`,ephemeral:true});
+      if(interaction.commandName==="teilnehmer"){
+        if(!interaction.guild)
+          return interaction.reply({content:"❌ Dieser Befehl funktioniert nur auf dem Turnier-Server.",ephemeral:true});
+
+        if(!interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator))
+          return interaction.reply({content:"❌ Nur Server-Administratoren dürfen die Teilnehmerliste anzeigen.",ephemeral:true});
+
+        const participants=await getParticipants();
+        if(!participants.length)
+          return interaction.reply({content:`🏆 **MONTÉRO FALL GUYS CUP 2026**\n\n👥 **0/${maxPlayers} Teilnehmer**\n\nNoch keine Anmeldungen vorhanden.`,ephemeral:true});
+
+        const formatParticipant=(participant,index)=>{
+          const number=String(index+1).padStart(2,"0");
+          const fallGuys=participant.fallguys_name || "Unbekannt";
+          const discord=participant.discord_name ? `@${participant.discord_name}` : "Website-Anmeldung";
+          const email=participant.email ? participant.email : "keine E-Mail";
+          const time=participant.created_at
+            ? new Date(participant.created_at).toLocaleString("de-CH",{dateStyle:"short",timeStyle:"short",timeZone:"Europe/Zurich"})
+            : "unbekannt";
+          const swiss=participant.swiss_residence ? "🇨🇭 bestätigt" : "❌ nicht bestätigt";
+          return `**${number}. ${fallGuys}**\n👤 ${discord} · 📧 ${email}\n🕒 ${time} · ${swiss}`;
+        };
+
+        const chunks=[];
+        for(let i=0;i<participants.length;i+=8){
+          chunks.push(participants.slice(i,i+8));
+        }
+
+        const embeds=chunks.slice(0,4).map((chunk,chunkIndex)=>
+          new EmbedBuilder()
+            .setColor(0xC8A45D)
+            .setTitle(chunkIndex===0 ? "🏆 MONTÉRO FALL GUYS CUP 2026 · Teilnehmer" : `🏆 Teilnehmer · Seite ${chunkIndex+1}`)
+            .setDescription(chunk.map((p,i)=>formatParticipant(p,chunkIndex*8+i)).join("\n\n"))
+            .setFooter({text:`${participants.length}/${maxPlayers} Teilnehmer · Nur für Administratoren sichtbar`})
+        );
+
+        return interaction.reply({embeds,ephemeral:true});
+      }
 
       if(interaction.commandName==="turnier-reset"){
         if(!interaction.guild)
