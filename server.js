@@ -178,16 +178,73 @@ app.get("/api/status",async (req,res)=>{
     open:count<maxPlayers
   });
 });
-app.post("/api/register",async (req,res)=>{
-  const {fallGuysName,email}=req.body||{};
-  if(!fallGuysName || fallGuysName.trim().length<2)
-    return res.status(400).json({ok:false,message:"Bitte gib deinen Fall-Guys-Namen ein."});
-  const result=await addRegistration({fallGuysName,email,source:"website",swissResidence:true});
-  if(!result.ok){
-    const messages={full:"Das Turnier ist bereits voll.",already:"Du bist bereits registriert."};
-    return res.status(409).json({ok:false,message:messages[result.reason]||"Anmeldung nicht möglich."});
+app.post("/api/register", async (req, res) => {
+  try {
+    const {
+      fallGuysName,
+      discordName,
+      email,
+      swissResidence
+    } = req.body || {};
+
+    if (!fallGuysName || fallGuysName.trim().length < 2) {
+      return res.status(400).json({
+        ok: false,
+        message: "Bitte gib deinen Fall-Guys-Namen ein."
+      });
+    }
+
+    if (!discordName || discordName.trim().length < 2) {
+      return res.status(400).json({
+        ok: false,
+        message: "Bitte gib deinen Discord-Namen ein."
+      });
+    }
+
+    if (swissResidence !== true) {
+      return res.status(400).json({
+        ok: false,
+        message: "Bitte bestätige deinen Wohnsitz in der Schweiz."
+      });
+    }
+
+    const result = await addRegistration({
+      fallGuysName: fallGuysName.trim(),
+      discordName: discordName.trim(),
+      email: email ? email.trim() : "",
+      source: "website",
+      swissResidence: true
+    });
+
+    if (!result.ok) {
+      const messages = {
+        full: "Das Turnier ist bereits voll.",
+        already: "Du bist bereits registriert.",
+        error: "Die Anmeldung konnte gerade nicht gespeichert werden."
+      };
+
+      return res.status(result.reason === "full" ? 409 : 400).json({
+        ok: false,
+        message: messages[result.reason] || messages.error
+      });
+    }
+
+    const playerNumber = await countPlayers();
+
+    res.json({
+      ok: true,
+      message: "Du bist erfolgreich für den Montéro Fall Guys Cup registriert!",
+      playerNumber
+    });
+
+  } catch (error) {
+    console.error("Website-Anmeldung fehlgeschlagen:", error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Die Anmeldung konnte gerade nicht verarbeitet werden."
+    });
   }
-  res.json({ok:true,message:"Du bist erfolgreich für den Montéro Fall Guys Cup registriert!",playerNumber:await countPlayers()});
 });
 app.get("/api/admin/participants",async (req,res)=>{
   if(!process.env.ADMIN_KEY || req.query.key!==process.env.ADMIN_KEY)
