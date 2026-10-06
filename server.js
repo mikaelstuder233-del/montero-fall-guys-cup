@@ -1,3 +1,4 @@
+
 import "dotenv/config";
 import express from "express";
 import fs from "node:fs";
@@ -7,7 +8,8 @@ import {
   Client, GatewayIntentBits, Events,
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
   ModalBuilder, TextInputBuilder, TextInputStyle,
-  EmbedBuilder, REST, Routes, SlashCommandBuilder
+  EmbedBuilder, REST, Routes, SlashCommandBuilder,
+  LabelBuilder
 } from "discord.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -168,13 +170,32 @@ client.on(Events.InteractionCreate,async interaction=>{
         .setPlaceholder("z. B. MIKKI123").setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(50);
       const email=new TextInputBuilder().setCustomId("email").setLabel("E-Mail für die Turnierinfo")
         .setPlaceholder("optional").setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(100);
-      modal.addComponents(new ActionRowBuilder().addComponents(fg),new ActionRowBuilder().addComponents(email));
+
+      // Pflichtbestätigung für den Schweizer Wohnsitz.
+      // Discord stellt Checkbox-Komponenten in Modals bereit.
+      const swissResidence = new LabelBuilder()
+        .setLabel("🇨🇭 Wohnsitz Schweiz")
+        .setDescription("Ich bestätige, dass ich zum Zeitpunkt der Anmeldung meinen Wohnsitz in der Schweiz habe.")
+        .setCheckboxComponent((checkbox) => checkbox.setCustomId("swiss_residence"));
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(fg),
+        new ActionRowBuilder().addComponents(email),
+        swissResidence
+      );
       return interaction.showModal(modal);
     }
 
     if(interaction.isModalSubmit() && interaction.customId==="montero_registration_modal"){
       const fallGuysName=interaction.fields.getTextInputValue("fallguys_name");
       const email=interaction.fields.getTextInputValue("email")||null;
+      const swissResidence = interaction.fields.getCheckbox("swiss_residence");
+      if(!swissResidence?.value){
+        return interaction.reply({
+          content:"🇨🇭 Du musst bestätigen, dass du deinen Wohnsitz in der Schweiz hast, um am Turnier teilzunehmen.",
+          ephemeral:true
+        });
+      }
       const result=addRegistration({
         discordId:interaction.user.id,discordName:interaction.user.username,
         fallGuysName,email,source:"discord"
