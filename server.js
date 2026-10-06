@@ -322,7 +322,7 @@ client.on(Events.InteractionCreate,async interaction=>{
       const fallGuysName=interaction.fields.getTextInputValue("fallguys_name");
       const email=interaction.fields.getTextInputValue("email")||null;
       const swissResidence = interaction.fields.getCheckbox("swiss_residence");
-      if(!swissResidence?.value){
+      if(!swissResidence){
         return interaction.reply({
           content:"🇨🇭 Du musst bestätigen, dass du deinen Wohnsitz in der Schweiz hast, um am Turnier teilzunehmen.",
           ephemeral:true
