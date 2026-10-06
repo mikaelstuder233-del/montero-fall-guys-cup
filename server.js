@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  Client, GatewayIntentBits, Events,
+  Client, GatewayIntentBits, Events, PermissionsBitField,
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
   ModalBuilder, TextInputBuilder, TextInputStyle,
   EmbedBuilder, REST, Routes, SlashCommandBuilder,
@@ -135,7 +135,9 @@ client.once(Events.ClientReady,async readyClient=>{
     new SlashCommandBuilder().setName("turnier-panel")
       .setDescription("Postet das Montéro Fall Guys Anmeldepanel in diesen Channel."),
     new SlashCommandBuilder().setName("teilnehmer")
-      .setDescription("Zeigt die aktuelle Anzahl der Turnierteilnehmer.")
+      .setDescription("Zeigt die aktuelle Anzahl der Turnierteilnehmer."),
+    new SlashCommandBuilder().setName("turnier-reset")
+      .setDescription("Setzt den Turnierstand auf 0 zurück und entfernt die Teilnehmerrollen.")
   ].map(c=>c.toJSON());
 
   const rest=new REST({version:"10"}).setToken(process.env.DISCORD_TOKEN);
@@ -157,6 +159,38 @@ client.on(Events.InteractionCreate,async interaction=>{
         return interaction.reply({embeds:[buildTournamentEmbed()],components:[registerRow]});
       if(interaction.commandName==="teilnehmer")
         return interaction.reply({content:`🏆 **Montéro Cup:** ${countPlayers()}/${maxPlayers} Plätze belegt.`,ephemeral:true});
+
+      if(interaction.commandName==="turnier-reset"){
+        if(!interaction.guild)
+          return interaction.reply({content:"❌ Dieser Befehl funktioniert nur auf dem Turnier-Server.",ephemeral:true});
+
+        if(!interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator))
+          return interaction.reply({content:"❌ Nur Server-Administratoren dürfen das Turnier zurücksetzen.",ephemeral:true});
+
+        const data=loadData();
+        const oldParticipants=[...data.registrations];
+        data.registrations=[];
+        saveData(data);
+
+        let removedRoles=0;
+        if(process.env.DISCORD_PARTICIPANT_ROLE_ID){
+          for(const participant of oldParticipants){
+            if(!participant.discord_id) continue;
+            const member=await interaction.guild.members.fetch(participant.discord_id).catch(()=>null);
+            if(member?.roles.cache.has(process.env.DISCORD_PARTICIPANT_ROLE_ID)){
+              const removed=await member.roles.remove(process.env.DISCORD_PARTICIPANT_ROLE_ID).then(()=>true).catch(()=>false);
+              if(removed) removedRoles++;
+            }
+          }
+        }
+
+        await interaction.reply({
+          content:`🧹 **Turnier zurückgesetzt!**\n\n👥 Teilnehmer: **0/${maxPlayers}**\n🏆 Entfernte Teilnehmerrollen: **${removedRoles}**\n\nAlle bisherigen Anmeldungen wurden gelöscht.`,
+          ephemeral:true
+        });
+
+        if(interaction.channel) await refreshPanelMessage(interaction.channel).catch(()=>{});
+      }
     }
 
     if(interaction.isButton() && interaction.customId==="montero_register"){
