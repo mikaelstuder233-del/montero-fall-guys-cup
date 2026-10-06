@@ -1,4 +1,3 @@
-
 import "dotenv/config";
 import express from "express";
 import fs from "node:fs";
@@ -112,9 +111,8 @@ function buildTournamentEmbed(){
       `👥 **Teilnehmer:** ${count}/${maxPlayers}\n`+
       "🎮 **Spiel:** Fall Guys\n"+
       "📺 **LIVE:** MIKKI_TV auf Twitch\n\n"+
-      "Klicke auf **JETZT ANMELDEN**, fülle das kurze Formular aus und du bist dabei.
-
-⚠️ *Bei längerer Inaktivität kann der Bot kurz schlafen. Falls die Anmeldung nicht reagiert, bitte 1–2 Minuten warten und erneut versuchen.*"
+      "Klicke auf **JETZT ANMELDEN**, fülle das kurze Formular aus und du bist dabei.\n\n"+
+      "⚠️ *Bei längerer Inaktivität kann der Bot kurz schlafen. Falls die Anmeldung nicht reagiert, bitte 1–2 Minuten warten und erneut versuchen.*"
     )
     .addFields(
       {name:"🥇 1. Platz",value:"Montéro Preis + Pokal",inline:true},
